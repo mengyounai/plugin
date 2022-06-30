@@ -16,8 +16,6 @@ public class Urlconvert {
 
     public static String urlconvert(String tag) throws UnsupportedEncodingException {
         String encodeStr = URLEncoder.encode(tag,"UTF-8");
-//        System.out.println(encodeStr);
-//        System.out.println(URLDecoder.decode(encodeStr,"UTF-8"));
         return encodeStr;
     }
 

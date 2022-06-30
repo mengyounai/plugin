@@ -20,7 +20,6 @@ public class JsonUtil {
         //读取为String
         BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
         String s2 = reader.readLine();
-
         return null;
 
     }
@@ -36,7 +35,8 @@ public class JsonUtil {
      * 舔狗日记
      */
     public static String getDogDiary() {
-        String url = "http://api.tianapi.com/wanan/index?key=c0d01b7943b1714ecf44398d2c4187c3";
+//        String url = "http://api.tianapi.com/wanan/index?key=c0d01b7943b1714ecf44398d2c4187c3";
+        String url = "http://api.tianapi.com/tiangou/index?key=d726756945d0793c447a40a7ea530b45";
         String common = common(url);
         return common;
     }
@@ -70,12 +70,10 @@ public class JsonUtil {
             HttpURLConnection yc = (HttpURLConnection) oracle.openConnection();
             yc.setRequestMethod("GET");
             yc.setRequestProperty("Content-Type", "application/json;charset=utf-8");
-//            yc.setr
             //输入流作参数传进InputStreamReader并用BufferedReader接受
             BufferedReader in = new BufferedReader(new InputStreamReader(
                     yc.getInputStream()));
             BufferedReader reader = new BufferedReader(new InputStreamReader(oracle.openStream()));
-            is = yc.getInputStream();
             s2 = reader.readLine();
             //记得关闭连接
             in.close();
@@ -99,14 +97,20 @@ public class JsonUtil {
         String url = "http://api.tianapi.com/wanan/index?key=c0d01b7943b1714ecf44398d2c4187c3";
         String evening = getEvening();
         System.out.println(evening);
-
+        int[] arr = new int[]{1, 2, 7, 4, 5, 8, 7, 3, 9, 6};
+        //快速排序
+        quickSort(arr, 0, arr.length - 1);
+        //遍历数组
+        for (int i = 0; i < arr.length; i++) {
+            System.out.print(arr[i] + " ");
+        }
 
 //        //类型转化 string转jsonObject 拿到这个json
 //        JSONObject object = (JSONObject) JSONObject.parse(body);
 //
 //        JSONArray records=object.getJSONObject("data").getJSONArray("records");
 //        System.out.println(records);
-//        /*
+        /*
 //        [
 //		      {
 //		        "orderNo": "ord_010_20220111111111111",
@@ -136,4 +140,32 @@ public class JsonUtil {
 //        //ord_010_20220111111111111
 
     }
+
+    private static void quickSort(int[] arr, int i, int i1) {
+        if (i < i1) {
+            int j = partition(arr, i, i1);
+            quickSort(arr, i, j - 1);
+            quickSort(arr, j + 1, i1);
+        }
+    }
+
+    private static int partition(int[] arr, int i, int i1) {
+        int pivot = arr[i];
+        int j = i;
+        for (int k = i + 1; k <= i1; k++) {
+            if (arr[k] < pivot) {
+                j++;
+                swap(arr, j, k);
+            }
+        }
+        swap(arr, i, j);
+        return j;
+    }
+
+    private static void swap(int[] arr, int j, int k) {
+        int temp = arr[j];
+        arr[j] = arr[k];
+        arr[k] = temp;
+    }
+
 }

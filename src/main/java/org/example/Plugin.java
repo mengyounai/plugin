@@ -1,6 +1,5 @@
 package org.example;
 
-
 import net.mamoe.mirai.Bot;
 import net.mamoe.mirai.console.extension.PluginComponentStorage;
 import net.mamoe.mirai.console.plugin.jvm.JavaPlugin;
@@ -8,20 +7,16 @@ import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescriptionBuilder;
 import net.mamoe.mirai.event.GlobalEventChannel;
 import net.mamoe.mirai.event.events.*;
 import net.mamoe.mirai.message.data.*;
-import org.example.utils.JsonUtil;
+import org.example.utils.URLUtils;
 import org.example.utils.Urlconvert;
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
-
-import java.io.*;
-import java.net.*;
-import java.util.concurrent.TimeUnit;
-
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 
 public final class Plugin extends JavaPlugin {
-
     public static final Plugin INSTANCE = new Plugin();
     //要读取的文件夹
     String fileH = "D:\\images\\H\\";
@@ -48,13 +43,11 @@ public final class Plugin extends JavaPlugin {
             Long qqNum = event.getSender().getId(); // 获取该信息发送者的QQ号，返回类型为Long
             Long Num = event.getSubject().getId(); // 获取消息来源，好友消息则是好友QQ号，群组消息则是群号，返回类型为Long
 
-            if (Num == 2572158616L) {
-                if (mesJson.contains("晚安")){
-                    String eve= JsonUtil.getEvening();
-                    event.getSender().sendMessage(eve);
-                }
-                event.getSender().sendMessage(mesJson);
-            }
+            String s = event.getMessage().serializeToMiraiCode();
+            String substring = s.substring(13, s.length() - 1);
+//            event.getSender().sendMessage(substring);
+
+//            event.getSender().sendMessage(new PlainText("你发的图片为：").plus(Image.fromId(substring))); // 一个纯文本加一个图片
 
 //            event.getSender().sendMessage("理你一下");
         });
@@ -71,61 +64,54 @@ public final class Plugin extends JavaPlugin {
                 //相关代码都在这里写
                 //如果收到信息为“kkp”等关键词则发色图
                 if (mesJson.contains("kkp") || mesJson.contains("涩图") || mesJson.contains("色图")) {
-                    File imageFile = null;
-                    int length = mesJson.length();
+                    long start1=System.currentTimeMillis();
                     String imgUrl = "https://api.lolicon.app/setu/v2/";
                     String tag = "";
+                    int length = mesJson.length();
                     //获取最后两个关键词
-                    String lastName = mesJson.substring(mesJson.length() - 2, mesJson.length());
+                    String lastName = mesJson.substring(length - 2, length);
                     //只有最后两个关键词为涩图才按匹配
                     if (lastName.equals("涩图") && length > 2) {
                         try {
-                            tag = Urlconvert.urlconvert(mesJson.substring(0, mesJson.length() - 2));
+                            tag = Urlconvert.urlconvert(mesJson.substring(0, length - 2));
                         } catch (UnsupportedEncodingException e) {
                             e.printStackTrace();
                         }
                         imgUrl = imgUrl + "?tag=" + tag;
                     }
-                    long start = System.currentTimeMillis();
-                    String getImageUrl = getImageUrl(imgUrl);
-                    long end = System.currentTimeMillis();
-                    System.out.println("获取路径所花的时间："+(end-start));
-                    long start2 = System.currentTimeMillis();
-                    //定义一个URL对象，就是你想下载的图片的URL地址
-                    URL url = null;
-                    InputStream is=null;
-                    try {
-                        url = new URL(getImageUrl);
-                        //打开连接
-                        Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 7890));
-                        HttpURLConnection conn = (HttpURLConnection) url.openConnection(proxy);
-                        conn.setRequestProperty("User-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36");
-                        //设置请求方式为"GET"
-                        conn.setRequestMethod("GET");
-                        //超时响应时间为10秒
-                        conn.setConnectTimeout(10 * 1000);
-                        //通过输入流获取图片数据
-                        is = conn.getInputStream();
-                    } catch (MalformedURLException | ProtocolException e) {
-                        e.printStackTrace();
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    System.out.println("图片地址:"+imgUrl);
+                    //获取图片地址
+                    String getImageUrl = URLUtils.getImageUrl(imgUrl);
+                    System.out.println("取得的涩图地址为："+getImageUrl);
+                    if (getImageUrl.equals("error")){
+                        event.getSubject().sendMessage("获取地址失败");
+                    }else if (getImageUrl.equals("")) {
+                        MessageChain chain = new MessageChainBuilder()
+                                .append(new QuoteReply(event.getMessage()))
+                                .append("没有此tag的涩图")
+                                .build();
+                        event.getSubject().sendMessage(chain);
+                    }else {
+                        long start2=System.currentTimeMillis();
+                        InputStream is = null;
+                        //获得输入流
+                        is = URLUtils.accessImageUrl(getImageUrl);
+                        Image image = net.mamoe.mirai.contact.Contact.uploadImage(event.getSubject(), is);
+                        try {
+                            //记得关闭流
+                            is.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        long end2=System.currentTimeMillis();
+                        System.out.println("获取图片的时间为："+(end2-start2));
+                        long start3=System.currentTimeMillis();
+                        event.getSubject().sendMessage(image);
+                        long end3=System.currentTimeMillis();
+                        System.out.println("发送图片的时间为："+(end3-start3));
+                        System.out.println("总时间为："+(end3-start1));
                     }
-//                    imageFile = imageFileSave(getImageUrl);
-                    long end2 = System.currentTimeMillis();
-                    System.out.println("获取输出流所花的时间："+(end2-start2));
-                    long start3 = System.currentTimeMillis();
-//                    Image image = net.mamoe.mirai.contact.Contact.uploadImage(event.getSubject(), imageFile);
-                    Image image = net.mamoe.mirai.contact.Contact.uploadImage(event.getSubject(), is);
-                    try {
-                        is.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    event.getSubject().sendMessage(image);
-                    long end3 = System.currentTimeMillis();
-                    System.out.println("发送图片所花的时间："+(end3-start3));
-                    System.out.println("总时间："+(end3-start));
+
                 }
             }
         });
@@ -133,6 +119,7 @@ public final class Plugin extends JavaPlugin {
         //检测入群
         GlobalEventChannel.INSTANCE.subscribeAlways(MemberJoinRequestEvent.class, event -> {
             event.accept();  //机器人自动审批
+
             long fromId = event.getFromId();//获取新人id
             long groupId = event.getGroupId();//获取群id
             if (groupId == 881426228) {
@@ -141,11 +128,9 @@ public final class Plugin extends JavaPlugin {
                 // 自定义图片
                 // 发送图片需要先将图片上传到服务器
                 File f = new File("C:\\Users\\无限缤纷\\Desktop\\imageTest\\44.png");
-
                 Image image = net.mamoe.mirai.contact.Contact.uploadImage(event.component1().getGroup(groupId), f);
-                net.mamoe.mirai.contact.Contact.uploadImage(event.component1().getGroup(groupId), f);
                 //自定义欢迎信息
-                String mes = "   欢迎";
+                String mes = "    欢迎";
                 //封装
                 MessageChain messageChain = new MessageChainBuilder().append(at).append(mes).append(image).build();
                 //发送
@@ -153,7 +138,18 @@ public final class Plugin extends JavaPlugin {
             }
         });
 
+        GlobalEventChannel.INSTANCE.subscribeAlways(MessageRecallEvent.GroupRecall.class, event -> {
+
+            long groupId = event.getGroup().getId();
+            if (groupId==881426228){
+                int[] messageIds = event.getMessageIds();
+                System.out.println("撤回时间为:"+event.getMessageTime());
+                //发送
+            }
+        });
     }
+
+
 
     public static String[] getFileName(String path) {
         File f = new File(path);//获取路径
@@ -167,40 +163,6 @@ public final class Plugin extends JavaPlugin {
             fileName[i] = fs.getName();
         }
         return fileName;
-    }
-
-
-    public static String getImageUrl(String imageurl) {
-        String s = "";
-        try {
-            //定义一个URL对象，就是你想下载的图片的URL地址
-            URL url = new URL(imageurl);
-            //读取为String
-            BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
-            String s2 = reader.readLine();
-//            while ((s2 = reader.readLine()) != null) {
-//                System.out.println(s2);
-//            }
-            reader.close();
-
-            //判断是否有图片链接
-            if (s2.contains("https")) {
-                int index = s2.lastIndexOf(":");
-                int end = s2.lastIndexOf("\"");
-                //获取链接
-                s = s2.substring(index - 5, end);
-            }
-            //设置图片大小
-            String before=s.substring(0,19);
-            String after=s.substring(19);
-            s= before+"/c/540x540_70"+after;
-            JSONObject obj = new JSONObject();
-            JSONArray jsonArray = obj.getJSONArray(s2);
-            System.out.println("jsonArray:"+jsonArray);
-        } catch (Exception e) {
-            System.out.println("获取图片地址出错");
-        }
-        return s;
     }
 
 }
